@@ -90,9 +90,20 @@ export async function POST(request: Request) {
     }
 
     const settings = body as Partial<OrganisationSettings>;
+
+    // Filter settings to only allowed keys and ensure boolean types
+    const allowedKeys = Object.keys(DEFAULT_SETTINGS) as (keyof OrganisationSettings)[];
+    const filteredSettings: Partial<OrganisationSettings> = {};
+
+    for (const key of allowedKeys) {
+      if (settings[key] !== undefined && typeof settings[key] === 'boolean') {
+        filteredSettings[key] = settings[key];
+      }
+    }
+
     const mergedSettings: OrganisationSettings = {
       ...DEFAULT_SETTINGS,
-      ...settings,
+      ...filteredSettings,
     };
 
     const invalidEntry = Object.entries(mergedSettings).find(([, value]) => typeof value !== 'boolean');

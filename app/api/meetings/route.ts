@@ -73,22 +73,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
     }
 
-    const normalizedMeetingType = meetingType ?? 'instant';
+    const normalizedMeetingType = (meetingType ?? 'instant') as 'instant' | 'scheduled';
     if (!ALLOWED_MEETING_TYPES.has(normalizedMeetingType)) {
       return NextResponse.json({ error: 'Invalid meeting type' }, { status: 400 });
     }
 
-    if (subjectId !== undefined && subjectId !== null && typeof subjectId !== 'string') {
-      return NextResponse.json({ error: 'Invalid subject id' }, { status: 400 });
+    if (normalizedMeetingType === 'scheduled' && (!scheduledAt || typeof scheduledAt !== 'string')) {
+      return NextResponse.json({ error: 'Scheduled meetings require a valid date' }, { status: 400 });
     }
 
     let scheduledDate: Date | null = null;
-    if (scheduledAt !== undefined && scheduledAt !== null) {
-      if (typeof scheduledAt !== 'string') {
-        return NextResponse.json({ error: 'Invalid scheduled date' }, { status: 400 });
-      }
-
-      scheduledDate = new Date(scheduledAt);
+    if (normalizedMeetingType === 'scheduled') {
+      scheduledDate = new Date(scheduledAt!);
       if (Number.isNaN(scheduledDate.getTime())) {
         return NextResponse.json({ error: 'Invalid scheduled date' }, { status: 400 });
       }
@@ -126,8 +122,8 @@ export async function POST(request: Request) {
           description: typeof description === 'string' ? description.trim() : null,
           subject_id: subjectId || null,
           meeting_type: normalizedMeetingType,
-          status: scheduledDate ? 'scheduled' : 'live',
-          scheduled_at: scheduledDate?.toISOString() ?? null,
+          status: normalizedMeetingType === 'scheduled' ? 'scheduled' : 'live',
+          scheduled_at: normalizedMeetingType === 'scheduled' ? scheduledDate?.toISOString() : null,
         })
         .select()
         .single();

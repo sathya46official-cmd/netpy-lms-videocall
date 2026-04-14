@@ -14,13 +14,15 @@ interface Recording {
   users: { full_name: string | null; email: string } | null;
 }
 
-function formatDuration(seconds: number | null): string {
-  if (!seconds) return '—';
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
+function formatDuration(totalSeconds: number | null): string {
+  if (totalSeconds === null || totalSeconds === undefined || totalSeconds < 0) return '—';
+  if (totalSeconds === 0) return '0s';
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = Math.floor(totalSeconds % 60);
   if (h > 0) return `${h}h ${m}m`;
-  return `${m}m ${s}s`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
 }
 
 export default function StudentRecordingsPage() {
@@ -47,12 +49,36 @@ export default function StudentRecordingsPage() {
 
   useEffect(() => { fetchRecordings(); }, [fetchRecordings]);
 
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setPlayingUrl(null);
+        setPlayingTitle('');
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
+
+  useEffect(() => {
+    if (!playingUrl && videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.src = '';
+    }
+  }, [playingUrl]);
+
   const handlePlay = async (recording: Recording) => {
     setLoadingId(recording.id);
     try {
       const res = await fetch(`/api/recordings/${recording.id}/url`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? 'Failed to get playback URL');
+      const data = await res.json().catch(() => null);
+      
+      if (!res.ok) {
+        if (res.status === 404) throw new Error('Recording not found');
+        if (res.status === 403) throw new Error('Access denied: You do not have permission to view this recording');
+        throw new Error(data?.error ?? 'Failed to get playback URL');
+      }
+      
       setPlayingUrl(data.url);
       setPlayingTitle(recording.meetings?.title ?? 'Recording');
     } catch (err: any) {

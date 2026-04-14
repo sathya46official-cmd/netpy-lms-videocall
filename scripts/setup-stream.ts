@@ -29,6 +29,19 @@ async function run() {
   const client = new StreamClient(apiKey, apiSecret, { timeout: 30000 });
 
   try {
+    // URL Validation
+    try {
+      for (const url of [minioUrlArg, webhookUrlArg]) {
+        const parsed = new URL(url);
+        if (parsed.protocol !== 'https:') {
+          throw new Error(`URL must use https: protocol: ${url}`);
+        }
+      }
+    } catch (err: any) {
+      console.error(`❌ Invalid Argument: ${err.message}`);
+      process.exit(1);
+    }
+
     console.log('1️⃣  Registering MinIO External Storage...');
     
     // 1. Create or Update External Storage Configuration
@@ -103,6 +116,7 @@ async function run() {
     if (error?.response?.data) {
       console.error('Details:', JSON.stringify(error.response.data, null, 2));
     }
+    process.exit(1);
   }
 }
 

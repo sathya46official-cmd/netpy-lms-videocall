@@ -78,9 +78,13 @@ export default function SuperAdminDashboard() {
         throw new Error(data?.error ?? 'Failed to create invite');
       }
 
-      const fullInviteLink = `${window.location.origin}${data.inviteUrl}`;
-      setInviteLink(fullInviteLink);
-      toast({ title: 'Invite created!', description: 'Copy the link below and share it securely.' });
+      if (data?.inviteUrl) {
+        const fullInviteLink = `${window.location.origin}${data.inviteUrl}`;
+        setInviteLink(fullInviteLink);
+        toast({ title: 'Invite created!', description: 'Copy the link below and share it securely.' });
+      } else {
+        throw new Error('Unexpected response: Invite URL missing from server.');
+      }
     } catch (error) {
       toast({
         title: 'Error',

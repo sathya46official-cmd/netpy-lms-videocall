@@ -14,13 +14,17 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('users')
       .select('role, org_id')
       .eq('id', user.id)
       .single();
 
-    if (!profile) {
+    if (profileError || !profile) {
+      if (profileError) {
+        console.error('Failed to fetch user profile for recording access:', profileError);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+      }
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
     }
 
@@ -40,8 +44,10 @@ export async function GET(
     }
 
     // Access control: super_admin can access all, others must be in the same org
-    if (profile.role !== 'super_admin' && recording.org_id !== profile.org_id) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    if (profile.role !== 'super_admin') {
+      if (!recording.org_id || recording.org_id !== profile.org_id) {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      }
     }
 
     // Generate 1-hour presigned URL

@@ -25,6 +25,29 @@ interface SendInviteEmailParams {
   orgName?: string;
 }
 
+function escapeHtml(text: string): string {
+  if (!text) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function sanitizeUrl(url: string): string {
+  if (!url) return '';
+  try {
+    const parsed = new URL(url);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return 'about:blank';
+    }
+    return escapeHtml(url);
+  } catch {
+    return 'about:blank';
+  }
+}
+
 export async function sendInviteEmail({
   toEmail,
   role,
@@ -35,6 +58,12 @@ export async function sendInviteEmail({
   const resend = getResendClient();
   const roleLabel = ROLE_LABEL[role] ?? role;
   const platformName = orgName ? `${orgName} on Netpy LMS` : 'Netpy LMS';
+
+  const safeToEmail = escapeHtml(toEmail);
+  const safeRoleLabel = escapeHtml(roleLabel);
+  const safePlatformName = escapeHtml(platformName);
+  const safeInviter = escapeHtml(invitedByName);
+  const safeInviteUrl = sanitizeUrl(inviteUrl);
 
   const html = `
     <!DOCTYPE html>
@@ -58,8 +87,8 @@ export async function sendInviteEmail({
                 <td style="padding:40px;">
                   <h2 style="margin:0 0 12px;font-size:22px;color:#111827;font-weight:700;">You've been invited!</h2>
                   <p style="margin:0 0 20px;color:#6b7280;font-size:15px;line-height:1.6;">
-                    ${invitedByName ? `<strong>${invitedByName}</strong> has invited you` : 'You have been invited'} to join
-                    <strong>${platformName}</strong> as a <strong>${roleLabel}</strong>.
+                    ${safeInviter ? `<strong>${safeInviter}</strong> has invited you` : 'You have been invited'} to join
+                    <strong>${safePlatformName}</strong> as a <strong>${safeRoleLabel}</strong>.
                   </p>
                   <p style="margin:0 0 32px;color:#6b7280;font-size:15px;line-height:1.6;">
                     Click the button below to set up your account. This link expires in <strong>72 hours</strong>.
@@ -67,7 +96,7 @@ export async function sendInviteEmail({
                   <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
                     <tr>
                       <td style="background:linear-gradient(135deg,#10b981,#0d9488);border-radius:10px;">
-                        <a href="${inviteUrl}"
+                        <a href="${safeInviteUrl}"
                            style="display:inline-block;padding:14px 36px;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;">
                           Accept Invitation →
                         </a>
@@ -76,12 +105,12 @@ export async function sendInviteEmail({
                   </table>
                   <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px 20px;">
                     <p style="margin:0;font-size:13px;color:#065f46;">
-                      🔒 This invite is for <strong>${toEmail}</strong> only. Please don't share it.
+                      🔒 This invite is for <strong>${safeToEmail}</strong> only. Please don't share it.
                     </p>
                   </div>
                   <p style="margin:24px 0 0;font-size:12px;color:#9ca3af;word-break:break-all;">
                     If the button doesn't work, copy this link:<br/>
-                    <a href="${inviteUrl}" style="color:#10b981;">${inviteUrl}</a>
+                    <a href="${safeInviteUrl}" style="color:#10b981;">${safeInviteUrl}</a>
                   </p>
                 </td>
               </tr>

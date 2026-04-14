@@ -7,7 +7,7 @@
 -- DROP TABLE IF EXISTS invite_tokens, notifications, question_replies, questions, meeting_invites, meetings, subjects, batch_members, batches, users, organisations CASCADE;
 
 -- 1. Organisations (tenants)
-CREATE TABLE organisations (
+CREATE TABLE IF NOT EXISTS organisations (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   logo_url text,
@@ -16,7 +16,7 @@ CREATE TABLE organisations (
   created_at timestamptz default now()
 );
 
-CREATE TABLE platform_bootstrap_state (
+CREATE TABLE IF NOT EXISTS platform_bootstrap_state (
   singleton boolean primary key default true check (singleton),
   initialized_at timestamptz default now(),
   super_admin_user_id uuid,
@@ -24,7 +24,7 @@ CREATE TABLE platform_bootstrap_state (
 );
 
 -- 2. Users (extends Supabase Auth)
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id uuid primary key references auth.users(id) on delete cascade,
   email text unique not null,
   full_name text,
@@ -39,10 +39,15 @@ CREATE TABLE users (
 );
 
 -- Note: now that users table exists, add FK to organisations
-ALTER TABLE organisations ADD CONSTRAINT fk_created_by FOREIGN KEY (created_by) REFERENCES users(id) on delete set null;
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_created_by') THEN
+    ALTER TABLE organisations ADD CONSTRAINT fk_created_by FOREIGN KEY (created_by) REFERENCES users(id) on delete set null;
+  END IF;
+END $$;
 
 -- 3. Batches / Classes
-CREATE TABLE batches (
+CREATE TABLE IF NOT EXISTS batches (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   description text,
@@ -52,14 +57,14 @@ CREATE TABLE batches (
 );
 
 -- 4. Batch Members
-CREATE TABLE batch_members (
+CREATE TABLE IF NOT EXISTS batch_members (
   batch_id uuid references batches(id) on delete cascade,
   user_id uuid references users(id) on delete cascade,
   primary key (batch_id, user_id)
 );
 
 -- 5. Subjects / Courses
-CREATE TABLE subjects (
+CREATE TABLE IF NOT EXISTS subjects (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   code text,
@@ -68,7 +73,7 @@ CREATE TABLE subjects (
 );
 
 -- 6. Meetings (replaces existing lms_meetings)
-CREATE TABLE meetings (
+CREATE TABLE IF NOT EXISTS meetings (
   id uuid primary key default gen_random_uuid(),
   org_id uuid references organisations(id) on delete cascade,
   host_id uuid references users(id) on delete set null,
@@ -88,7 +93,7 @@ CREATE TABLE meetings (
 );
 
 -- 7. Meeting Invites (users or batches)
-CREATE TABLE meeting_invites (
+CREATE TABLE IF NOT EXISTS meeting_invites (
   id uuid primary key default gen_random_uuid(),
   meeting_id uuid references meetings(id) on delete cascade,
   user_id uuid references users(id) on delete cascade,
@@ -101,7 +106,7 @@ CREATE TABLE meeting_invites (
 );
 
 -- 8. Q&A Questions
-CREATE TABLE questions (
+CREATE TABLE IF NOT EXISTS questions (
   id uuid primary key default gen_random_uuid(),
   meeting_id uuid references meetings(id) on delete cascade,
   asked_by uuid references users(id) on delete set null,
@@ -113,7 +118,7 @@ CREATE TABLE questions (
 );
 
 -- 9. Q&A Replies
-CREATE TABLE question_replies (
+CREATE TABLE IF NOT EXISTS question_replies (
   id uuid primary key default gen_random_uuid(),
   question_id uuid references questions(id) on delete cascade,
   replied_by uuid references users(id) on delete cascade,
@@ -122,7 +127,7 @@ CREATE TABLE question_replies (
 );
 
 -- 10. Notifications
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTS notifications (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references users(id) on delete cascade,
   title text not null,
@@ -134,7 +139,7 @@ CREATE TABLE notifications (
 );
 
 -- 11. Invite Tokens
-CREATE TABLE invite_tokens (
+CREATE TABLE IF NOT EXISTS invite_tokens (
   id uuid primary key default gen_random_uuid(),
   email text not null,
   role text check (role in ('super_admin','org_admin','staff','student')),
@@ -146,7 +151,7 @@ CREATE TABLE invite_tokens (
   created_at timestamptz default now()
 );
 
-CREATE TABLE question_upvotes (
+CREATE TABLE IF NOT EXISTS question_upvotes (
   question_id uuid references questions(id) on delete cascade,
   user_id uuid references users(id) on delete cascade,
   created_at timestamptz default now(),
@@ -350,10 +355,10 @@ ALTER PUBLICATION supabase_realtime ADD TABLE question_replies;
 ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
 
 -- Indexes for performance
-CREATE INDEX idx_users_org_id ON users(org_id);
-CREATE INDEX idx_batches_org_id ON batches(org_id);
-CREATE INDEX idx_subjects_org_id ON subjects(org_id);
-CREATE INDEX idx_meetings_org_id ON meetings(org_id);
-CREATE INDEX idx_questions_meeting_id ON questions(meeting_id);
-CREATE INDEX idx_question_upvotes_user_id ON question_upvotes(user_id);
-CREATE INDEX idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_users_org_id ON users(org_id);
+CREATE INDEX IF NOT EXISTS idx_batches_org_id ON batches(org_id);
+CREATE INDEX IF NOT EXISTS idx_subjects_org_id ON subjects(org_id);
+CREATE INDEX IF NOT EXISTS idx_meetings_org_id ON meetings(org_id);
+CREATE INDEX IF NOT EXISTS idx_questions_meeting_id ON questions(meeting_id);
+CREATE INDEX IF NOT EXISTS idx_question_upvotes_user_id ON question_upvotes(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);

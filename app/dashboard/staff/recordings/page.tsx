@@ -16,13 +16,17 @@ interface Recording {
   users: { full_name: string | null; email: string } | null;
 }
 
-function formatDuration(seconds: number | null): string {
-  if (!seconds) return '—';
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
+function formatDuration(totalSeconds: number | null): string {
+  if (totalSeconds === null || totalSeconds === undefined || totalSeconds < 0) return '—';
+  if (totalSeconds === 0) return '0s';
+  
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = Math.floor(totalSeconds % 60);
+
   if (h > 0) return `${h}h ${m}m`;
-  return `${m}m ${s}s`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
 }
 
 export default function StaffRecordingsPage() {

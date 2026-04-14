@@ -15,22 +15,24 @@ export async function GET(request: Request) {
     const roles = roleString ? roleString.split(',') : ['staff', 'student'];
 
     // RLS handles the isolation logic natively, so we just select from users
-    const { data: users, error: usersError } = await supabase
-      .from('users')
-      .select('id, full_name, email, role, org_id, joined_at, is_active')
-      .in('role', roles)
-      .order('joined_at', { ascending: false });
+    const [usersResult, invitesResult] = await Promise.all([
+      supabase
+        .from('users')
+        .select('id, full_name, email, role, org_id, joined_at, is_active')
+        .in('role', roles)
+        .order('joined_at', { ascending: false }),
+      supabase
+        .from('invite_tokens')
+        .select('id, email, role, created_at, expires_at, used_at')
+        .in('role', roles)
+        .order('created_at', { ascending: false })
+    ]);
 
-    if (usersError) throw usersError;
+    if (usersResult.error) throw usersResult.error;
+    if (invitesResult.error) throw invitesResult.error;
 
-    // Fetch invites
-    const { data: invites, error: invitesError } = await supabase
-      .from('invite_tokens')
-      .select('id, email, role, created_at, expires_at, used_at')
-      .in('role', roles)
-      .order('created_at', { ascending: false });
-
-    if (invitesError) throw invitesError;
+    const users = usersResult.data;
+    const invites = invitesResult.data;
 
     return NextResponse.json({ users, invites });
   } catch (err: any) {

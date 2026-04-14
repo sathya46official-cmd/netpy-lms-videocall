@@ -17,4 +17,8 @@ async function check() {
   }
 }
 
-check();
+check().catch(err => {
+  console.error('💥 Fatal error in check-recordings script:');
+  console.error(err instanceof Error ? err.message : err);
+  process.exit(1);
+});

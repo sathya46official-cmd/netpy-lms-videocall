@@ -67,12 +67,27 @@ function InviteForm() {
       
       if (!confirmRes.ok) {
         try {
-          const cleanupRes = await fetch('/api/auth/delete-user', { method: 'POST' });
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          const cleanupRes = await fetch('/api/auth/delete-user', { 
+            method: 'POST',
+            signal: controller.signal,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user?.id })
+          }).finally(() => clearTimeout(timeoutId));
+
           if (!cleanupRes.ok) {
             console.error('Failed to clean up orphaned auth user after invite confirmation error.');
           }
-        } catch (cleanupError) {
-          console.error('Failed to clean up orphaned auth user:', cleanupError);
+        } catch (cleanupError: any) {
+          if (cleanupError.name === 'AbortError') {
+            console.warn('Cleanup fetch timed out after 5s');
+          } else {
+            console.error('Failed to clean up orphaned auth user:', cleanupError);
+          }
         }
 
         throw new Error(confirmData?.error || 'Failed to confirm invite.');

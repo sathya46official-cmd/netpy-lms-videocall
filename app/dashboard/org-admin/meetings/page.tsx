@@ -26,9 +26,9 @@ export default function OrgAdminMeetingsPage() {
   const fetchMeetings = useCallback(async () => {
     try {
       const res = await fetch('/api/meetings');
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.error ?? res.statusText ?? `Request failed with status ${res.status}`);
-      setMeetings(data.meetings || []);
+      setMeetings(data?.meetings || []);
     } catch (err: any) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
     } finally {
@@ -96,7 +96,7 @@ export default function OrgAdminMeetingsPage() {
                       <Clock className="h-3.5 w-3.5" />{new Date(m.created_at).toLocaleString()}
                     </span>
                   )}
-                  <span>Host: {m.users?.full_name || m.users?.email}</span>
+                  <span>Host: {m.users?.full_name || m.users?.email || 'Unknown Host'}</span>
                 </div>
 
                 {m.status !== 'ended' && m.status !== 'cancelled' && (

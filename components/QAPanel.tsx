@@ -23,15 +23,19 @@ function QuestionCard({
 }) {
   const [showReplies, setShowReplies] = useState(false);
   const [replyText, setReplyText] = useState('');
+  const [isReplying, setIsReplying] = useState(false);
 
   const submitReply = async () => {
-    if (!replyText.trim()) return;
+    if (!replyText.trim() || isReplying) return;
 
+    setIsReplying(true);
     try {
       await onReply(q.id, replyText);
       setReplyText('');
     } catch (error) {
       console.error('Failed to submit reply:', error);
+    } finally {
+      setIsReplying(false);
     }
   };
 
@@ -128,10 +132,10 @@ function QuestionCard({
               />
               <button
                 onClick={submitReply}
-                disabled={!replyText.trim()}
+                disabled={!replyText.trim() || isReplying}
                 className="bg-white/10 hover:bg-white/20 text-white rounded-lg p-1.5 disabled:opacity-30 transition-all"
               >
-                <Send className="h-3 w-3" />
+                {isReplying ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
               </button>
             </div>
           )}

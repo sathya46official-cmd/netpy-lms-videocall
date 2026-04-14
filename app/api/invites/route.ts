@@ -105,13 +105,19 @@ export async function POST(request: Request) {
       });
     } catch (emailErr) {
       console.error('Failed to send invite email (invite still created):', emailErr);
+      emailSent = false;
     }
 
-    return NextResponse.json({
-      success: true,
+    const successMessage = emailSent 
+      ? 'Invite created and email sent successfully.' 
+      : 'Invite created, but failed to send the invitation email. Please share the link manually.';
+
+    return NextResponse.json({ 
+      success: true, 
       inviteUrl,
       fullInviteUrl,
-      message: 'Invite created and email sent.',
+      emailSent,
+      message: successMessage 
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 400 });

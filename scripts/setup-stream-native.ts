@@ -26,6 +26,16 @@ async function run() {
   const client = new StreamClient(apiKey, apiSecret, { timeout: 30000 });
 
   try {
+    try {
+      new URL(webhookUrlArg);
+      if (!webhookUrlArg.startsWith('https://')) {
+        throw new Error('Webhook URL must be absolute and use https://');
+      }
+    } catch (err: any) {
+      console.error(`❌ Invalid Webhook URL: ${err.message}`);
+      process.exit(1);
+    }
+
     console.log('1️⃣  Resetting Call Type (default) to Native Storage...');
     
     // Update 'default' call type to use native storage (remove external_storage override)
@@ -61,6 +71,7 @@ async function run() {
     if (error?.response?.data) {
       console.error('Details:', JSON.stringify(error.response.data, null, 2));
     }
+    process.exit(1);
   }
 }
 

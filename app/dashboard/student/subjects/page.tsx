@@ -12,6 +12,7 @@ export default function StudentSubjectsPage() {
   const { toast } = useToast();
 
   useEffect(() => {
+    let isMounted = true;
     fetch('/api/subjects')
       .then(async (r) => {
         const data = await r.json().catch(() => null);
@@ -20,9 +21,16 @@ export default function StudentSubjectsPage() {
         }
         return data;
       })
-      .then(d => setSubjects(d.subjects || []))
-      .catch(err => toast({ title: 'Error', description: err.message, variant: 'destructive' }))
-      .finally(() => setIsLoading(false));
+      .then(d => {
+        if (isMounted) setSubjects(d.subjects || []);
+      })
+      .catch(err => {
+        if (isMounted) toast({ title: 'Error', description: err.message, variant: 'destructive' });
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+    return () => { isMounted = false; };
   }, [toast]);
 
   if (isLoading) return <div className="flex justify-center p-12"><Loader /></div>;

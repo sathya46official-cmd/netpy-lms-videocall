@@ -28,7 +28,7 @@ export default function SuperAdminMeetingsPage() {
       const r = await fetch('/api/meetings');
       const data = await r.json().catch(() => null);
       if (!r.ok) throw new Error(data?.error ?? r.statusText ?? `Request failed with status ${r.status}`);
-      setMeetings(data.meetings || []);
+      setMeetings(data?.meetings || []);
     } catch (err: any) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
     } finally {
@@ -75,7 +75,7 @@ export default function SuperAdminMeetingsPage() {
               <table className="min-w-full divide-y divide-slate-700">
                 <thead className="bg-slate-900">
                   <tr>
-                    {['Title', 'Subject', 'Host', 'Type', 'Status', 'Created', ''].map(h => (
+                    {['Title', 'Subject', 'Host', 'Type', 'Status', 'Created / Scheduled', ''].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">{h}</th>
                     ))}
                   </tr>
@@ -85,17 +85,17 @@ export default function SuperAdminMeetingsPage() {
                     <tr key={m.id} className="hover:bg-slate-700/50">
                       <td className="px-4 py-3 text-sm text-slate-200 font-medium">{m.title}</td>
                       <td className="px-4 py-3 text-sm text-slate-400">{m.subjects?.name || '—'}</td>
-                      <td className="px-4 py-3 text-sm text-slate-400">{m.users?.full_name || m.users?.email || '—'}</td>
+                      <td className="px-4 py-3 text-sm text-slate-400">{m.users?.full_name || m.users?.email || 'Unknown Host'}</td>
                       <td className="px-4 py-3 text-sm text-slate-400 capitalize">{m.meeting_type}</td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLE[m.status] || ''}`}>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLE[m.status] || 'bg-slate-700 text-slate-400'}`}>
                           {m.status}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-400">
-                        {m.scheduled_at
+                        {m.scheduled_at && !isNaN(new Date(m.scheduled_at).getTime())
                           ? new Date(m.scheduled_at).toLocaleString()
-                          : m.created_at && !Number.isNaN(Date.parse(m.created_at))
+                          : m.created_at && !isNaN(new Date(m.created_at).getTime())
                             ? new Date(m.created_at).toLocaleDateString()
                             : '—'}
                       </td>

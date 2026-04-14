@@ -72,7 +72,7 @@ export function Sidebar() {
       <div className="flex flex-1 flex-col gap-4">
         <h2 className="text-xs uppercase tracking-widest font-bold opacity-50 mb-4 px-2">Navigation</h2>
         {links.map((link) => {
-          const isActive = pathname === link.route;
+          const isActive = pathname === link.route || (pathname.startsWith(`${link.route}/`) && link.route.length > 10);
           const Icon = link.icon;
 
           return (

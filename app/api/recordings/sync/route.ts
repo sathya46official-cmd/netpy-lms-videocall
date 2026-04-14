@@ -31,11 +31,15 @@ export async function POST() {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const streamClient = new StreamClient(
-      process.env.NEXT_PUBLIC_STREAM_API_KEY!,
-      process.env.STREAM_API_SECRET!,
-      { timeout: 30000 }
-    );
+    const streamApiKey = process.env.NEXT_PUBLIC_STREAM_API_KEY;
+    const streamSecret = process.env.STREAM_API_SECRET;
+
+    if (!streamApiKey || !streamSecret) {
+      console.error('Recording sync failed: Missing Stream API credentials');
+      return NextResponse.json({ error: 'Stream credentials not configured' }, { status: 500 });
+    }
+
+    const streamClient = new StreamClient(streamApiKey, streamSecret, { timeout: 30000 });
     const adminDb = createAdminClient();
 
     // Fetch last 20 calls from Stream
@@ -46,6 +50,7 @@ export async function POST() {
 
     let synced = 0;
     let skipped = 0;
+    let failed = 0;
 
     for (const callState of calls) {
       const callId = callState.call.id;
@@ -53,21 +58,26 @@ export async function POST() {
       let recordings;
       try {
         const res = await streamClient.video.call('default', callId).listRecordings();
-        recordings = res.recordings;
-      } catch {
+        recordings = res.recordings || [];
+      } catch (recListErr) {
+        console.error(`[Sync] Failed to list recordings for call ${callId}:`, recListErr);
         continue;
       }
 
       if (recordings.length === 0) continue;
 
       // Find the matching meeting in Supabase
-      const { data: meeting } = await adminDb
+      const { data: meeting, error: meetingError } = await adminDb
         .from('meetings')
         .select('id, org_id, host_id')
         .eq('stream_call_id', callId)
-        .single();
+        .maybeSingle();
 
-      if (!meeting) { skipped++; continue; }
+      if (meetingError || !meeting) { 
+        if (meetingError) console.error(`[Sync] DB error finding meeting for call ${callId}:`, meetingError);
+        skipped++; 
+        continue; 
+      }
 
       // Org-scoped: non-super-admins only sync their own org's recordings
       if (profile.role !== 'super_admin' && meeting.org_id !== profile.org_id) {
@@ -76,35 +86,50 @@ export async function POST() {
       }
 
       for (const rec of recordings) {
-        const fileKey = rec.url ?? rec.filename ?? `${callId}/recording.mp4`;
-        const durationMs = rec.end_time && rec.start_time
-          ? new Date(rec.end_time).getTime() - new Date(rec.start_time).getTime()
-          : null;
+        const fileKey = rec.url ?? rec.filename ?? `${callId}/${rec.session_id || 'recording'}.mp4`;
+        
+        let durationSeconds: number | null = null;
+        if (rec.start_time && rec.end_time) {
+          const start = new Date(rec.start_time).getTime();
+          const end = new Date(rec.end_time).getTime();
+          if (!isNaN(start) && !isNaN(end)) {
+            durationSeconds = Math.round((end - start) / 1000);
+          }
+        }
 
         // Check if already saved
-        const { data: existing } = await adminDb
+        const { data: existing, error: existErr } = await adminDb
           .from('recordings')
           .select('id')
           .eq('file_key', fileKey)
           .maybeSingle();
 
-        if (existing) { skipped++; continue; }
+        if (existErr || existing) { 
+          if (existErr) console.error(`[Sync] DB error checking existing recording:`, existErr);
+          skipped++; 
+          continue; 
+        }
 
-        const { error } = await adminDb.from('recordings').insert({
+        const { error: insertError } = await adminDb.from('recordings').insert({
           meeting_id:          meeting.id,
           org_id:              meeting.org_id,
           host_id:             meeting.host_id,
           stream_recording_id: rec.session_id ?? null,
           file_key:            fileKey,
-          duration_seconds:    durationMs ? Math.round(durationMs / 1000) : null,
+          duration_seconds:    durationSeconds,
           status:              'ready',
         });
 
-        if (!error) synced++;
+        if (insertError) {
+          console.error(`[Sync] DB error inserting recording for meeting ${meeting.id}:`, insertError);
+          failed++;
+        } else {
+          synced++;
+        }
       }
     }
 
-    return NextResponse.json({ success: true, synced, skipped });
+    return NextResponse.json({ success: true, synced, skipped, failed });
   } catch (err: any) {
     console.error('Recording sync failed:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

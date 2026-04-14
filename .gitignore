@@ -41,8 +41,9 @@ next-env.d.ts
 .idea
 
 # sensitive / credential files
-*.txt
 supabase_api_keys*.txt
+secrets/*.txt
+credentials.txt
 
 # scratch / dev debug scripts (not part of core project)
 /scratch

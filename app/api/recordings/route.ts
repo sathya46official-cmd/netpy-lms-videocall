@@ -10,13 +10,17 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('users')
       .select('role, org_id')
       .eq('id', user.id)
       .single();
 
-    if (!profile) {
+    if (profileError || !profile) {
+      if (profileError) {
+        console.error('Failed to fetch user profile for recordings list:', profileError);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+      }
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
     }
 
@@ -36,13 +40,10 @@ export async function GET() {
       .order('created_at', { ascending: false });
 
     // Role-based filtering
-    if (profile.role === 'super_admin') {
-      // Super admin sees everything
-    } else if (profile.role === 'org_admin' || profile.role === 'staff') {
-      // Scoped to their org
-      query = query.eq('org_id', profile.org_id);
-    } else if (profile.role === 'student') {
-      // Students only see recordings from their org
+    if (profile.role !== 'super_admin') {
+      if (!profile.org_id) {
+        return NextResponse.json({ recordings: [] });
+      }
       query = query.eq('org_id', profile.org_id);
     }
 

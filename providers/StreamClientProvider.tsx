@@ -126,7 +126,7 @@ const StreamVideoProvider = ({ children }: { children: ReactNode }) => {
       safeDisconnect(client).catch(() => undefined);
       clientRef.current = undefined;
     };
-  }, [user?.id]); // ← only re-run when user ID actually changes
+  }, [user?.id, resetKey]); // ← re-run when user ID actually changes OR manual reset is triggered
 
   const handleReset = () => {
     // Force full re-init on retry

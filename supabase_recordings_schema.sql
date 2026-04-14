@@ -27,7 +27,7 @@ CREATE INDEX IF NOT EXISTS recordings_org_id_idx ON recordings(org_id);
 -- ============================================================
 ALTER TABLE recordings ENABLE ROW LEVEL SECURITY;
 
--- Super admins see all recordings
+-- Super admins can view everything
 CREATE POLICY "super_admin can view all recordings"
   ON recordings FOR SELECT
   USING (
@@ -38,15 +38,42 @@ CREATE POLICY "super_admin can view all recordings"
     )
   );
 
--- Org admins, staff, and students see recordings in their org only
-CREATE POLICY "org members can view org recordings"
+-- Org admins can view everything in their organisation
+CREATE POLICY "org_admin can view organisation recordings"
+  ON recordings FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM users
+      WHERE users.id = auth.uid()
+        AND users.role = 'org_admin'
+        AND users.org_id = recordings.org_id
+    )
+  );
+
+-- Staff and students can only view recordings for meetings they were invited to or hosted
+CREATE POLICY "invited members can view recordings"
   ON recordings FOR SELECT
   USING (
     EXISTS (
       SELECT 1 FROM users
       WHERE users.id = auth.uid()
         AND users.org_id = recordings.org_id
-        AND users.role IN ('org_admin', 'staff', 'student')
+        AND users.role IN ('staff', 'student')
+        AND (
+          recordings.host_id = auth.uid() OR
+          EXISTS (
+            SELECT 1 FROM meeting_invites mi
+            WHERE mi.meeting_id = recordings.meeting_id
+              AND (
+                mi.user_id = auth.uid() OR
+                EXISTS (
+                  SELECT 1 FROM batch_members bm
+                  WHERE bm.batch_id = mi.batch_id
+                    AND bm.user_id = auth.uid()
+                )
+              )
+          )
+        )
     )
   );
 

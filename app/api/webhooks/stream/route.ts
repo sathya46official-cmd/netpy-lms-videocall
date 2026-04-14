@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 /**
@@ -12,7 +13,28 @@ import { createAdminClient } from '@/lib/supabase/admin';
  */
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const rawBody = await request.text();
+    const sig = request.headers.get('x-signature');
+    const secret = process.env.STREAM_WEBHOOK_SECRET;
+
+    // Verify signature if secret is configured
+    if (secret) {
+      if (!sig) {
+        console.error('[Stream Webhook] Missing signature header while secret is configured');
+        return NextResponse.json({ error: 'Missing signature' }, { status: 401 });
+      }
+      const expectedSig = crypto
+        .createHmac('sha256', secret)
+        .update(rawBody)
+        .digest('hex');
+      
+      if (sig !== expectedSig) {
+        console.error('[Stream Webhook] Invalid signature');
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+      }
+    }
+
+    const body = JSON.parse(rawBody);
 
     // Log all events for debugging
     console.log('[Stream Webhook] Event received:', body.type, JSON.stringify(body).slice(0, 500));
@@ -44,7 +66,7 @@ export async function POST(request: Request) {
       .from('meetings')
       .select('id, org_id, host_id')
       .eq('stream_call_id', streamCallId)
-      .single();
+      .maybeSingle();
 
     if (meetingError || !meeting) {
       console.error('[Stream Webhook] Meeting not found for stream_call_id:', streamCallId, meetingError);
@@ -52,11 +74,28 @@ export async function POST(request: Request) {
     }
 
     // The recording.url from Stream is the file location.
-    // When using native storage, this is the CDN URL we want to store.
     const fileKey = recording.url ?? recording.filename ?? `recordings/${streamCallId}/${recording.session_id ?? 'recording'}.mp4`;
-    const durationMs = recording.end_time && recording.start_time
-      ? new Date(recording.end_time).getTime() - new Date(recording.start_time).getTime()
-      : null;
+
+    // Idempotency check: don't insert if fileKey already exists
+    const { data: existing } = await adminDb
+      .from('recordings')
+      .select('id')
+      .eq('file_key', fileKey)
+      .maybeSingle();
+
+    if (existing) {
+      console.log('[Stream Webhook] Recording already exists, skipping:', fileKey);
+      return NextResponse.json({ success: true, duplicated: true });
+    }
+
+    let durationSeconds: number | null = null;
+    if (recording.end_time && recording.start_time) {
+      const start = new Date(recording.start_time).getTime();
+      const end = new Date(recording.end_time).getTime();
+      if (!isNaN(start) && !isNaN(end)) {
+        durationSeconds = Math.round((end - start) / 1000);
+      }
+    }
 
     // Insert recording metadata into Supabase
     const { error: insertError } = await adminDb
@@ -67,7 +106,7 @@ export async function POST(request: Request) {
         host_id: meeting.host_id,
         stream_recording_id: recording.session_id ?? recording.id ?? null,
         file_key: fileKey,
-        duration_seconds: durationMs ? Math.round(durationMs / 1000) : null,
+        duration_seconds: durationSeconds,
         status: 'ready',
       });
 

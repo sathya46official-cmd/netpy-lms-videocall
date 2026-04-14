@@ -27,6 +27,7 @@ export default function OrgAdminSettingsPage() {
   const [settings, setSettings] = useState<OrganisationSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [hasLoadError, setHasLoadError] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -40,7 +41,9 @@ export default function OrgAdminSettingsPage() {
         }
 
         setSettings({ ...DEFAULT_SETTINGS, ...(data?.settings ?? {}) });
+        setHasLoadError(false);
       } catch (error) {
+        setHasLoadError(true);
         toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
       } finally {
         setIsLoading(false);
@@ -141,9 +144,12 @@ export default function OrgAdminSettingsPage() {
       </div>
 
       <div>
-        <Button onClick={saveSettings} disabled={isSaving}>
+        <Button onClick={saveSettings} disabled={isSaving || hasLoadError}>
           {isSaving ? 'Saving...' : 'Save Settings'}
         </Button>
+        {hasLoadError && (
+          <p className="text-xs text-red-500 mt-2">Cannot save settings because they failed to load. Please refresh the page.</p>
+        )}
       </div>
     </div>
   );

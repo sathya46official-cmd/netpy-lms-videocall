@@ -21,7 +21,7 @@ export async function GET(request: Request) {
       .from('meetings')
       .select('id')
       .eq('stream_call_id', callId)
-      .single();
+      .maybeSingle();
 
     if (meetingError) {
       throw meetingError;
@@ -107,6 +107,27 @@ export async function PATCH(request: Request) {
 
     const isStaff = ['super_admin', 'org_admin', 'staff'].includes(profile?.role);
     const adminDb = createAdminClient();
+
+    // For staff-only actions, ensure the question belongs to the user's organisation
+    if (['pin', 'answer'].includes(action)) {
+      if (!isStaff) {
+        return NextResponse.json({ error: 'Action not permitted' }, { status: 403 });
+      }
+
+      // Check org match (super_admin bypasses)
+      if (profile?.role !== 'super_admin') {
+        const { data: qMeeting } = await adminDb
+          .from('questions')
+          .select('meetings(org_id)')
+          .eq('id', questionId)
+          .single();
+        
+        const qOrgId = (qMeeting as any)?.meetings?.org_id;
+        if (!qOrgId || qOrgId !== profile?.org_id) {
+          return NextResponse.json({ error: 'Access denied: Question/Meeting from different organisation' }, { status: 403 });
+        }
+      }
+    }
 
     if (action === 'upvote') {
       const { data: upvoteRecorded, error: upvoteError } = await adminDb.rpc('increment_question_upvotes', {

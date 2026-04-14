@@ -14,11 +14,13 @@ export default function SuperAdminSchedulePage() {
   const fetchMeetings = useCallback(async () => {
     try {
       const res = await fetch('/api/meetings');
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? res.statusText);
-      const upcoming = (data.meetings || []).filter((m: any) => m.status === 'scheduled');
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error ?? res.statusText ?? `Request failed with status ${res.status}`);
+      
+      const upcoming = (data?.meetings || []).filter((m: any) => m.status === 'scheduled');
       setMeetings(upcoming);
     } catch (err: any) {
+      setMeetings([]);
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
@@ -59,11 +61,9 @@ export default function SuperAdminSchedulePage() {
                     <span className="flex items-center gap-1.5 text-xs text-slate-400 mt-1">
                       <Clock className="h-3.5 w-3.5" /> {formattedAt}
                     </span>
-                    {(m.users?.full_name || m.users?.email) && (
-                      <span className="flex items-center gap-1.5 text-xs text-slate-500">
-                        <User className="h-3.5 w-3.5" /> {m.users?.full_name || m.users?.email}
-                      </span>
-                    )}
+                    <span className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <User className="h-3.5 w-3.5" /> {m.users?.full_name || m.users?.email || 'Unknown Host'}
+                    </span>
                   </div>
                   <span className="bg-blue-900/50 text-blue-300 text-xs px-3 py-1 rounded-full font-medium">Scheduled</span>
                 </CardContent>

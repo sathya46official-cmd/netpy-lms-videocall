@@ -58,39 +58,37 @@ export function useQA(callId: string) {
   useEffect(() => {
     if (!meetingId) return;
 
-    const questionIds = questions.map((question) => question.id).filter(Boolean);
-    const channel = supabase.channel(`qa-${callId}`);
+    // Use meetingId for a stable channel name
+    const channel = supabase.channel(`qa-meeting-${meetingId}`);
 
-    channel.on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'questions',
-        filter: `meeting_id=eq.${meetingId}`,
-      },
-      () => fetchQuestions()
-    );
-
-    if (questionIds.length > 0) {
-      channel.on(
+    channel
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'questions',
+          filter: `meeting_id=eq.${meetingId}`,
+        },
+        () => fetchQuestions()
+      )
+      .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'question_replies',
-          filter: `question_id=in.(${questionIds.join(',')})`,
+          // Note: We don't filter by IDs here to keep the subscription stable.
+          // RLS ensures the user only receives changes they have access to.
         },
         () => fetchQuestions()
-      );
-    }
-
-    channel.subscribe();
+      )
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [callId, fetchQuestions, meetingId, questions, supabase]);
+  }, [meetingId, fetchQuestions, supabase]);
 
   const postQuestion = async (text: string) => {
     if (!meetingId || !text.trim()) return;

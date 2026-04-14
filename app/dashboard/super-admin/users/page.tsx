@@ -77,11 +77,15 @@ export default function PlatformUsersPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? 'Failed to create invite');
 
-      const fullLink = data.fullInviteUrl ?? `${window.location.origin}${data.inviteUrl}`;
-      setInviteLink(fullLink);
-      setInviteEmail('');
-      toast({ title: '✅ Invite sent!', description: 'Email sent and link generated below.' });
-      fetchData();
+      if (data?.inviteUrl) {
+        const fullLink = data.fullInviteUrl ?? `${window.location.origin}${data.inviteUrl}`;
+        setInviteLink(fullLink);
+        setInviteEmail('');
+        toast({ title: '✅ Invite sent!', description: 'Email sent and link generated below.' });
+        fetchData();
+      } else {
+        throw new Error('Failed to generate invite link from server response.');
+      }
     } catch (err: any) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
     } finally {

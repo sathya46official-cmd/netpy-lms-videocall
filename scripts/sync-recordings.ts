@@ -23,14 +23,26 @@ async function run() {
     process.exit(1);
   }
 
+  try {
+    const parsedUrl = new URL(supaUrl);
+    if (parsedUrl.protocol !== 'https:') throw new Error('Supabase URL must use https:');
+  } catch (e: any) {
+    console.error(`❌ Invalid NEXT_PUBLIC_SUPABASE_URL: ${e.message}`);
+    process.exit(1);
+  }
+
+  const args = process.argv.slice(2);
+  const limitArg = args.find(a => a.startsWith('--limit='))?.split('=')[1];
+  const limit = limitArg ? parseInt(limitArg) : 50;
+
   const streamClient = new StreamClient(apiKey, apiSecret, { timeout: 30000 });
   const supabase = createClient(supaUrl, supaKey);
 
-  console.log('📡 Fetching latest calls from Stream...');
+  console.log(`📡 Fetching latest ${limit} calls from Stream...`);
 
   const { calls } = await streamClient.video.queryCalls({
     sort: [{ field: 'created_at', direction: -1 }],
-    limit: 20,
+    limit: limit,
   });
 
   console.log(`Found ${calls.length} call(s). Checking recordings for each...`);
@@ -53,30 +65,36 @@ async function run() {
     if (recordings.length === 0) continue;
 
     // Look up matching meeting in Supabase
-    const { data: meeting } = await supabase
+    const { data: meeting, error: meetingError } = await supabase
       .from('meetings')
       .select('id, org_id, host_id')
       .eq('stream_call_id', callId)
-      .single();
+      .maybeSingle();
 
-    if (!meeting) {
-      console.log(`  ⚠️  Skipping "${title}" — no matching meeting in DB.`);
+    if (meetingError || !meeting) {
+      if (meetingError) console.error(`  ❌ Error searching for meeting "${title}":`, meetingError.message);
+      else console.log(`  ⚠️  Skipping "${title}" — no matching meeting in DB.`);
       skipped++;
       continue;
     }
 
     for (const rec of recordings) {
-      const fileKey = rec.url ?? rec.filename ?? `${callId}/recording.mp4`;
+      if (!rec.url) {
+        console.log(`  ⏳ Skipping recording for "${title}" — URL not available yet.`);
+        continue;
+      }
+
+      const fileKey = rec.url;
       const durationMs = rec.end_time && rec.start_time
         ? new Date(rec.end_time).getTime() - new Date(rec.start_time).getTime()
         : null;
 
       // Check if already exists
-      const { data: existing } = await supabase
+      const { data: existing, error: existError } = await supabase
         .from('recordings')
         .select('id')
         .eq('file_key', fileKey)
-        .single();
+        .maybeSingle();
 
       if (existing) {
         console.log(`  ✅ "${title}" already in DB — skipping.`);

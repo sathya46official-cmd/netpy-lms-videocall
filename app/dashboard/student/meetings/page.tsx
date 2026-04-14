@@ -73,10 +73,16 @@ export default function StudentMeetingsPage() {
                 )}
 
                 <div className="flex flex-col gap-1 text-xs text-gray-400">
-                  {m.scheduled_at ? (
-                    <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" />{new Date(m.scheduled_at).toLocaleString()}</span>
+                  {m.scheduled_at && !isNaN(new Date(m.scheduled_at).getTime()) ? (
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5" />
+                      {new Date(m.scheduled_at).toLocaleString()}
+                    </span>
                   ) : (
-                    <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" />{new Date(m.created_at).toLocaleString()}</span>
+                    <span className="flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5" />
+                      Instant (Started {new Date(m.created_at).toLocaleString()})
+                    </span>
                   )}
                   <span>Host: {m.users?.full_name || m.users?.email || 'Unknown'}</span>
                 </div>
