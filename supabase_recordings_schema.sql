@@ -3,6 +3,18 @@
 -- Run this in Supabase → SQL Editor
 -- ============================================================
 
+CREATE TABLE IF NOT EXISTS batch_members (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    batch_id uuid REFERENCES batches(id) ON DELETE CASCADE,
+    user_id uuid REFERENCES users(id) ON DELETE CASCADE,
+    created_at timestamptz DEFAULT now(),
+    UNIQUE(batch_id, user_id)
+);
+
+ALTER TABLE meeting_invites ADD COLUMN IF NOT EXISTS batch_id uuid REFERENCES public.batches(id) ON DELETE CASCADE;
+
+DROP TABLE IF EXISTS recordings CASCADE;
+
 CREATE TABLE IF NOT EXISTS recordings (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   meeting_id          UUID REFERENCES meetings(id) ON DELETE CASCADE,

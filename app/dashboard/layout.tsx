@@ -49,7 +49,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
   return (
     <UserProvider initialUser={initialUser}>
-      <main className="relative min-h-screen bg-slate-50 text-slate-900">
+      <main className={`relative min-h-screen flex flex-col ${initialUser?.role === 'super_admin' ? 'bg-slate-900 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
         <Navbar />
         <div className="flex">
           <Sidebar />

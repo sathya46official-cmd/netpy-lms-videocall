@@ -75,7 +75,18 @@ export function Sidebar() {
       <div className="flex flex-1 flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar">
         <h2 className="text-xs uppercase tracking-widest font-bold opacity-50 mb-4 px-2 shrink-0">Navigation</h2>
         {links.map((link) => {
-          const isActive = pathname === link.route || (pathname.startsWith(`${link.route}/`) && link.route.length > 10);
+          // Identify if this link is a "Dashboard Root" link
+          const isRootDashboard = link.route === '/dashboard/super-admin' || 
+                                  link.route === '/dashboard/org-admin' || 
+                                  link.route === '/dashboard/staff' || 
+                                  link.route === '/dashboard/student';
+
+          // A root dashboard link should only show active if the pathname exactly matches it.
+          // Other links can be active if the pathname starts with their route (e.g. /students/123)
+          const isActive = isRootDashboard 
+            ? pathname === link.route 
+            : pathname.startsWith(link.route);
+            
           const Icon = link.icon;
 
           return (

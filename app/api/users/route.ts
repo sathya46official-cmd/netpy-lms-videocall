@@ -26,8 +26,8 @@ export async function GET() {
     const [usersRes, invitesRes] = await Promise.all([
       adminDb
         .from('users')
-        .select('id, email, full_name, role, is_active, joined_at, organisations!users_org_id_fkey(name)')
-        .order('joined_at', { ascending: false }),
+        .select('id, email, full_name, role, is_active, created_at, organisations!users_org_id_fkey(name)')
+        .order('created_at', { ascending: false }),
       adminDb
         .from('invite_tokens')
         .select('id, email, role, created_at, expires_at, used_at, organisations(name)')

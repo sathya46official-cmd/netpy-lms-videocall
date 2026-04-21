@@ -18,9 +18,9 @@ export async function GET(request: Request) {
     const [usersResult, invitesResult] = await Promise.all([
       supabase
         .from('users')
-        .select('id, full_name, email, role, org_id, joined_at, is_active')
+        .select('id, full_name, email, role, org_id, created_at, is_active')
         .in('role', roles)
-        .order('joined_at', { ascending: false }),
+        .order('created_at', { ascending: false }),
       supabase
         .from('invite_tokens')
         .select('id, email, role, created_at, expires_at, used_at')

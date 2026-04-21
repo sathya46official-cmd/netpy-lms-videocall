@@ -15,7 +15,6 @@ const MeetingSetup = ({
 }: {
   setIsSetupComplete: (value: boolean) => void;
 }) => {
-  // https://getstream.io/video/docs/react/guides/call-and-participant-state/#call-state
   const { useCallEndedAt, useCallStartsAt } = useCallStateHooks();
   const callStartsAt = useCallStartsAt();
   const callEndedAt = useCallEndedAt();
@@ -31,18 +30,23 @@ const MeetingSetup = ({
     );
   }
 
-  // https://getstream.io/video/docs/react/ui-cookbook/replacing-call-controls/
   const [isMicCamToggled, setIsMicCamToggled] = useState(false);
 
   useEffect(() => {
     if (isMicCamToggled) {
+      // Disable via SDK first
       call.camera.disable();
       call.microphone.disable();
+
+      // Also stop the underlying hardware track so the camera light turns off
+      call.camera.state.mediaStream
+        ?.getVideoTracks()
+        .forEach((track) => track.stop());
     } else {
       call.camera.enable();
       call.microphone.enable();
     }
-  }, [isMicCamToggled, call.camera, call.microphone]);
+  }, [isMicCamToggled, call]);
 
   if (callTimeNotArrived)
     return (
@@ -62,7 +66,22 @@ const MeetingSetup = ({
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center gap-3 text-white">
       <h1 className="text-center text-2xl font-bold">Setup</h1>
-      <VideoPreview />
+
+      {/* Only render the live VideoPreview when camera is ON.
+          When off, show a placeholder so the hardware track is fully released. */}
+      {isMicCamToggled ? (
+        <div className="flex h-[270px] w-[480px] items-center justify-center rounded-2xl bg-gray-800">
+          <div className="flex flex-col items-center gap-3 text-gray-400">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gray-700 text-4xl">
+              🎥
+            </div>
+            <p className="text-sm">Camera is off</p>
+          </div>
+        </div>
+      ) : (
+        <VideoPreview />
+      )}
+
       <div className="flex h-16 items-center justify-center gap-3">
         <label className="flex items-center justify-center gap-2 font-medium">
           <input
@@ -74,11 +93,15 @@ const MeetingSetup = ({
         </label>
         <DeviceSettings />
       </div>
+
       <Button
         className="rounded-md bg-green-500 px-4 py-2.5"
-        onClick={() => {
-          call.join();
-
+        onClick={async () => {
+          if (isMicCamToggled) {
+            await call.camera.disable();
+            await call.microphone.disable();
+          }
+          await call.join();
           setIsSetupComplete(true);
         }}
       >

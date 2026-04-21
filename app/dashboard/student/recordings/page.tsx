@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import Loader from '@/components/Loader';
 import { Video, Play, Clock, Calendar, X } from 'lucide-react';
+import RecordingComments from '@/components/RecordingComments';
 
 interface Recording {
   id: string;
@@ -95,23 +96,82 @@ export default function StudentRecordingsPage() {
       {/* Video Player Modal */}
       {playingUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="relative w-full max-w-4xl bg-black rounded-2xl overflow-hidden shadow-2xl">
-            <div className="flex items-center justify-between px-5 py-3 bg-gray-900">
-              <p className="text-white font-semibold text-sm truncate">{playingTitle}</p>
-              <button
-                onClick={() => { setPlayingUrl(null); setPlayingTitle(''); }}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
+          <div className="relative w-full max-w-6xl h-[80vh] bg-black rounded-2xl overflow-hidden shadow-2xl flex flex-col md:flex-row">
+            
+            {/* Left: Video Player */}
+            <div className="flex-1 flex flex-col">
+              <div className="flex items-center justify-between px-5 py-3 bg-gray-900 shrink-0">
+                <p className="text-white font-semibold text-sm truncate">{playingTitle}</p>
+                {/* Mobile close button only */}
+                <button
+                  onClick={() => { setPlayingUrl(null); setPlayingTitle(''); }}
+                  className="md:hidden text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="flex-1 bg-black flex items-center justify-center">
+                <video
+                  ref={videoRef}
+                  src={playingUrl}
+                  controls
+                  autoPlay
+                  className="w-full max-h-full"
+                  onTimeUpdate={() => {
+                    if (!videoRef.current || !loadingId) return;
+                    const currentTime = videoRef.current.currentTime;
+                    // Send progress every 10 seconds
+                    if (Math.floor(currentTime) % 10 === 0 && Math.floor(currentTime) > 0) {
+                      fetch(`/api/recordings/${loadingId}/progress`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          watchedSeconds: Math.floor(currentTime),
+                          lastPositionSeconds: Math.floor(currentTime),
+                          completed: currentTime >= videoRef.current.duration - 5
+                        })
+                      }).catch(() => {});
+                    }
+                  }}
+                  onEnded={() => {
+                     if (!videoRef.current || !loadingId) return;
+                     fetch(`/api/recordings/${loadingId}/progress`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          watchedSeconds: Math.floor(videoRef.current.currentTime),
+                          lastPositionSeconds: Math.floor(videoRef.current.currentTime),
+                          completed: true
+                        })
+                      }).catch(() => {});
+                  }}
+                />
+              </div>
             </div>
-            <video
-              ref={videoRef}
-              src={playingUrl}
-              controls
-              autoPlay
-              className="w-full max-h-[70vh] bg-black"
-            />
+
+            {/* Right: Comments Side Panel */}
+            <div className="w-full md:w-[400px] h-full flex flex-col bg-white">
+              <div className="hidden md:flex justify-end p-2 bg-gray-50 border-b border-gray-100">
+                <button
+                  onClick={() => { setPlayingUrl(null); setPlayingTitle(''); }}
+                  className="text-gray-500 hover:text-gray-800 transition-colors p-1"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <RecordingComments 
+                  recordingId={loadingId!} 
+                  onTimestampClick={(seconds) => {
+                    if (videoRef.current) {
+                      videoRef.current.currentTime = seconds;
+                      videoRef.current.play().catch(()=>{});
+                    }
+                  }} 
+                />
+              </div>
+            </div>
+
           </div>
         </div>
       )}
