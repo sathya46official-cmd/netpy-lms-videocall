@@ -2,64 +2,17 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/button'; // Using Button as Badge fallback since badge.tsx isn't in ui/
+
 import { Terminal, Lock, Video, FileText, Calendar, XCircle, Info, Cpu } from 'lucide-react';
 
-const ENDPOINTS = {
+const ENDPOINTS: Record<string, { method: string, path: string, title: string, desc: string, params?: string, headers?: string, body?: string }[]> = {
   meetings: [
-    {
-      method: 'POST',
-      path: '/api/lms/meetings/instant',
-      title: 'Create Instant Meeting',
-      desc: 'Starts a live session immediately and notifies invitees.',
-      body: `{
-  "title": "Introduction to Algebra",
-  "host_email": "teacher@college.edu",
-  "org_id": "uuid-of-org",
-  "subject": "Mathematics",
-  "module": "Module 1",
-  "invited_emails": ["student1@college.edu"],
-  "invited_batch_ids": ["batch-uuid-1"]
-}`
-    },
-    {
-      method: 'POST',
-      path: '/api/lms/meetings/schedule',
-      title: 'Schedule Meeting',
-      desc: 'Creates a future meeting and sends automated email notifications.',
-      body: `{
-  "title": "Advanced Calculus",
-  "host_email": "teacher@college.edu",
-  "org_id": "uuid-of-org",
-  "scheduled_at": "2026-04-25T10:00:00Z",
-  "duration_minutes": 60,
-  "invited_emails": ["student1@college.edu"]
-}`
-    },
     {
       method: 'GET',
       path: '/api/lms/meetings',
       title: 'List Meetings',
-      desc: 'Fetch a paginated list of meetings for an organisation with filters.',
-      params: '?org_id=uuid&status=scheduled&limit=20'
-    },
-    {
-      method: 'GET',
-      path: '/api/lms/meetings/[id]',
-      title: 'Meeting Details',
-      desc: 'Get full details of a meeting, including recording embed codes if available.',
-      params: '?org_id=uuid-of-org'
-    },
-    {
-      method: 'PATCH',
-      path: '/api/lms/meetings/[id]/cancel',
-      title: 'Cancel Meeting',
-      desc: 'Cancels a scheduled meeting and optionally notifies participants.',
-      body: `{
-  "org_id": "uuid-of-org",
-  "reason": "Technical issues",
-  "notify_participants": true
-}`
+      desc: 'Fetch a paginated list of meetings for an organisation with optional filters.',
+      params: '?org_id=uuid&status=scheduled&limit=20&subject=Mathematics'
     }
   ],
   recordings: [
@@ -67,21 +20,39 @@ const ENDPOINTS = {
       method: 'GET',
       path: '/api/lms/recordings',
       title: 'List All Recordings',
-      desc: 'Retrieve all processed recordings for an organisation.',
+      desc: 'Retrieve all processed recordings for an organisation, complete with embed codes.',
       params: '?org_id=uuid&limit=10'
     },
     {
       method: 'GET',
       path: '/api/lms/recordings/[meeting_id]',
-      title: 'Get Recording Embed',
-      desc: 'Fetch secure embed URLs and play-ready iframe codes.',
+      title: 'Get Recording Embed Details',
+      desc: 'Fetch secure embed URLs and play-ready iframe codes for a specific meeting.',
       params: '?org_id=uuid-of-org'
+    }
+  ],
+  webhooks: [
+    {
+      method: 'POST',
+      path: '/api/webhooks/stream',
+      title: 'Stream Webhook Endpoint',
+      desc: 'Receives events from GetStream for recording completion and attendance tracking. Configure this URL in your GetStream Dashboard.',
+      headers: 'x-signature: <hmac-sha256-signature>',
+      body: `{
+  "type": "call.recording_ready",
+  "call_cid": "default:uuid-call-id",
+  "recording": {
+    "url": "https://...",
+    "start_time": "2026-04-22T10:00:00Z",
+    "end_time": "2026-04-22T11:00:00Z"
+  }
+}`
     }
   ]
 };
 
 export default function ApiDocsPage() {
-  const [activeTab, setActiveTab] = useState<'meetings' | 'recordings'>('meetings');
+  const [activeTab, setActiveTab] = useState<'meetings' | 'recordings' | 'webhooks'>('meetings');
 
   return (
     <div className="flex flex-col gap-8 pb-12">
@@ -90,7 +61,7 @@ export default function ApiDocsPage() {
           <Cpu className="h-10 w-10 text-emerald-400" /> LMS Integration Hub
         </h1>
         <p className="text-slate-400 text-lg max-w-2xl">
-          Connect your LMS to the Netpy Video Call Platform. Build, schedule, and manage high-quality video sessions programmatically.
+          Connect your LMS to the Netpy Video Call Platform. Sync meetings, retrieve recording embed codes, and receive real-time webhook events.
         </p>
       </div>
 
@@ -104,7 +75,7 @@ export default function ApiDocsPage() {
         </CardHeader>
         <CardContent className="p-6">
           <p className="text-slate-300 mb-4">
-            The LMS portal must include the <code className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded">x-api-key</code> header in every single request.
+            The LMS portal must include the <code className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded">x-api-key</code> header in every single request to the <code className="text-emerald-300">/api/lms/*</code> endpoints.
           </p>
           <div className="bg-black rounded-lg p-5 border border-slate-700 font-mono text-sm group relative">
             <div className="absolute top-3 right-4 text-xs text-slate-500 uppercase tracking-widest font-bold">Request Header</div>
@@ -113,7 +84,7 @@ export default function ApiDocsPage() {
           </div>
           <div className="mt-4 flex items-center gap-3 text-sm text-slate-400 italic bg-emerald-500/5 p-3 rounded-lg border border-emerald-500/10">
             <Info className="h-4 w-4 text-emerald-500 shrink-0" />
-            <span>Missing or invalid keys will return a <code className="text-emerald-300">401 Unauthorized</code> response.</span>
+            <span>Missing or invalid keys will return a <code className="text-emerald-300">401 Unauthorized</code> response. Rate limit: 100 requests / minute.</span>
           </div>
         </CardContent>
       </Card>
@@ -141,6 +112,17 @@ export default function ApiDocsPage() {
              <FileText className="h-4 w-4" /> Recordings API
           </div>
           {activeTab === 'recordings' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]" />}
+        </button>
+        <button
+          onClick={() => setActiveTab('webhooks')}
+          className={`pb-4 px-6 text-sm font-bold transition-all relative ${
+            activeTab === 'webhooks' ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-300'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+             <Terminal className="h-4 w-4" /> Webhooks
+          </div>
+          {activeTab === 'webhooks' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]" />}
         </button>
       </div>
 
@@ -172,6 +154,15 @@ export default function ApiDocsPage() {
                   <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Query Parameters</h4>
                   <div className="bg-black/40 rounded p-3 text-xs font-mono text-blue-400 border border-slate-700">
                     {ep.params}
+                  </div>
+                </div>
+              )}
+
+              {ep.headers && (
+                <div className="mb-4">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Required Headers</h4>
+                  <div className="bg-black/40 rounded p-3 text-xs font-mono text-emerald-400 border border-slate-700">
+                    {ep.headers}
                   </div>
                 </div>
               )}

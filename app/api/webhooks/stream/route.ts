@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     console.log('[Stream Webhook] Event received:', body.type, JSON.stringify(body).slice(0, 500));
 
     // Supported events
-    const supportedEvents = ['call.recording_ready', 'call.session_participant_joined', 'call.session_participant_left'];
+    const supportedEvents = ['call.recording_ready', 'call.session_participant_joined', 'call.session_participant_left', 'call.ended'];
     if (!supportedEvents.includes(body.type)) {
       return NextResponse.json({ received: true });
     }
@@ -70,6 +70,22 @@ export async function POST(request: Request) {
     if (meetingError || !meeting) {
       console.error('[Stream Webhook] Meeting not found for stream_call_id:', streamCallId);
       return NextResponse.json({ error: 'Meeting not found' }, { status: 404 });
+    }
+
+    // --- CALL ENDED PROCESSING ---
+    if (body.type === 'call.ended') {
+      const { error: updateError } = await adminDb
+        .from('meetings')
+        .update({ status: 'ended' })
+        .eq('id', meeting.id);
+
+      if (updateError) {
+        console.error('[Stream Webhook] Failed to update meeting status to ended:', updateError);
+        return NextResponse.json({ error: 'DB update failed' }, { status: 500 });
+      }
+      
+      console.log('[Stream Webhook] Meeting Ended:', meeting.id);
+      return NextResponse.json({ success: true });
     }
 
     // --- STREAM ATTENDANCE PROCESSING ---

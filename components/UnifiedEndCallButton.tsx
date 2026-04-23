@@ -27,6 +27,12 @@ const UnifiedEndCallButton = () => {
   };
 
   const endCallForEveryone = async () => {
+    try {
+      // Proactively mark as ended in our DB so UI updates instantly
+      await fetch(`/api/meetings/${call.id}/end`, { method: 'POST' });
+    } catch (e) {
+      console.error('Failed to end meeting in DB', e);
+    }
     await call.endCall();
     router.push('/');
   };

@@ -16,7 +16,7 @@ import {
   useCall,
 } from '@stream-io/video-react-sdk';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Users, LayoutList, MessageSquare, Hand, PenLine, HelpCircle, MoreVertical, Smile } from 'lucide-react';
+import { Users, LayoutList, MessageSquare, Hand, HandMetal, PenLine, HelpCircle, MoreVertical, Smile, Disc } from 'lucide-react';
 
 import {
   DropdownMenu,
@@ -45,32 +45,47 @@ const MeetingRoom = () => {
   const [showChat, setShowChat] = useState(false);
   const [showWhiteboard, setShowWhiteboard] = useState(false);
   const [showQA, setShowQA] = useState(false);
-  const { useCallCallingState, useHasOngoingScreenShare } = useCallStateHooks();
+  const [isHandRaised, setIsHandRaised] = useState(false);
+  const { useCallCallingState, useHasOngoingScreenShare, useCameraState } = useCallStateHooks();
   const { user, isStaffOrAbove } = useRole();
   const { toast } = useToast();
 
   const callingState = useCallCallingState();
   const hasOngoingScreenShare = useHasOngoingScreenShare();
+  const { camera, isMute: isCameraMuted, status: cameraStatus } = useCameraState();
   const call = useCall();
   
   const isMeetingOwner = isStaffOrAbove;
+
+
 
   useEffect(() => {
     if (!call) return;
     const unsubscribe = call.on('call.reaction_new', (event) => {
       const e = event as any;
+      const reactedUser = e.reaction?.user || e.user;
+      const name = reactedUser?.name || reactedUser?.id;
+
       if (e.reaction?.type === 'raised-hand') {
-        const reactedUser = e.reaction.user || e.user;
-        const name = reactedUser?.name || reactedUser?.id;
         if (isMeetingOwner) {
           toast({ title: `${name} raised their hand! ✋` });
         }
-        
         const tiles = document.querySelectorAll('.str-video__participant-view');
         tiles.forEach(tile => {
           if (tile.innerHTML.includes(reactedUser?.id) || tile.innerHTML.includes(name)) {
             tile.classList.add('golden-border');
-            setTimeout(() => tile.classList.remove('golden-border'), 10000);
+          }
+        });
+      }
+
+      if (e.reaction?.type === 'lowered-hand') {
+        if (isMeetingOwner) {
+          toast({ title: `${name} lowered their hand` });
+        }
+        const tiles = document.querySelectorAll('.str-video__participant-view');
+        tiles.forEach(tile => {
+          if (tile.innerHTML.includes(reactedUser?.id) || tile.innerHTML.includes(name)) {
+            tile.classList.remove('golden-border');
           }
         });
       }
@@ -80,8 +95,17 @@ const MeetingRoom = () => {
 
   const toggleRaiseHand = async () => {
     try {
-      await call?.sendReaction({ type: 'raised-hand', emoji_code: ':raise-hand:' });
-      toast({ title: 'You raised your hand' });
+      if (isHandRaised) {
+        // Lower hand
+        await call?.sendReaction({ type: 'lowered-hand', emoji_code: ':lower-hand:' });
+        setIsHandRaised(false);
+        toast({ title: 'You lowered your hand' });
+      } else {
+        // Raise hand
+        await call?.sendReaction({ type: 'raised-hand', emoji_code: ':raise-hand:' });
+        setIsHandRaised(true);
+        toast({ title: 'You raised your hand ✋' });
+      }
     } catch(err) {
       console.error(err);
     }
@@ -174,8 +198,8 @@ const MeetingRoom = () => {
         {/* Mobile: Wrap less critical items in "More", Desktop: Show all */}
         <div className="hidden md:flex items-center justify-center gap-3">
           {isMeetingOwner && <RecordCallButton />}
-          <button onClick={toggleRaiseHand} className="transition-all hover:scale-105" title="Raise Hand">
-            <div className="icon-btn-container cursor-pointer rounded-2xl bg-[#19232d] px-4 py-2 hover:bg-[#4c535b] flex items-center justify-center">
+          <button onClick={toggleRaiseHand} className="transition-all hover:scale-105" title={isHandRaised ? 'Lower Hand' : 'Raise Hand'}>
+            <div className={cn("icon-btn-container cursor-pointer rounded-2xl px-4 py-2 flex items-center justify-center", isHandRaised ? "bg-amber-500 hover:bg-amber-600" : "bg-[#19232d] hover:bg-[#4c535b]")}>
               <Hand size={20} className="text-white" />
             </div>
           </button>
@@ -224,6 +248,15 @@ const MeetingRoom = () => {
               <MoreVertical size={20} className="text-white" />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="border-dark-1 bg-dark-1 text-white pb-2">
+              {isMeetingOwner && (
+                <>
+                  <DropdownMenuItem className="gap-2">
+                    <Disc size={16} className="text-red-400"/> <span>Record</span>
+                    <div className="ml-auto"><RecordCallButton /></div>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="border-dark-3" />
+                </>
+              )}
               <DropdownMenuItem onClick={() => {setShowChat(p => !p); setShowQA(false); setShowParticipants(false);}}>
                 <MessageSquare size={16} className="mr-2"/> Chat
               </DropdownMenuItem>
@@ -236,10 +269,12 @@ const MeetingRoom = () => {
               <DropdownMenuItem onClick={() => {setShowParticipants(p => !p); setShowChat(false); setShowQA(false);}}>
                 <Users size={16} className="mr-2"/> Participants
               </DropdownMenuItem>
+              <DropdownMenuSeparator className="border-dark-3" />
               <DropdownMenuItem onClick={toggleRaiseHand}>
-                <Hand size={16} className="mr-2"/> Raise Hand
+                <Hand size={16} className={cn("mr-2", isHandRaised && "text-amber-400")} />
+                {isHandRaised ? 'Lower Hand' : 'Raise Hand'}
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="border-dark-1" />
+              <DropdownMenuSeparator className="border-dark-3" />
               <div className="px-2 pt-1">
                 <p className="text-xs text-gray-400 mb-1 px-1">Reactions</p>
                 <ReactionsButton />
