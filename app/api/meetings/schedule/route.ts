@@ -40,7 +40,19 @@ export async function POST(request: Request) {
         data: {
           starts_at: startsAt,
           created_by_id: user.id,
-          custom: { description }
+          custom: { description },
+          settings_override: {
+            recording: {
+              mode: 'available',
+              quality: '1080p',
+              layout: {
+                name: 'grid',
+                options: {
+                  'custom_css.url': `${process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://lms.yourdomain.com'}/recording-theme.css`
+                }
+              }
+            }
+          }
         }
       });
     }

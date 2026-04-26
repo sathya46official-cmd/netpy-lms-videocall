@@ -38,7 +38,19 @@ export async function POST() {
         data: {
           starts_at: createdAt,
           created_by_id: user.id,
-          custom: { description: 'Instant Meeting' }
+          custom: { description: 'Instant Meeting' },
+          settings_override: {
+            recording: {
+              mode: 'available',
+              quality: '1080p',
+              layout: {
+                name: 'grid',
+                options: {
+                  'custom_css.url': `${process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://lms.yourdomain.com'}/recording-theme.css`
+                }
+              }
+            }
+          }
         }
       });
     }

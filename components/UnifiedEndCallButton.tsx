@@ -1,6 +1,6 @@
 'use client';
 
-import { useCall, useCallStateHooks } from '@stream-io/video-react-sdk';
+import { useCall } from '@stream-io/video-react-sdk';
 import { useRouter } from 'next/navigation';
 import { useRole } from '@/hooks/useRole';
 import {
@@ -59,7 +59,7 @@ const UnifiedEndCallButton = () => {
           End
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="border-dark-1 bg-dark-1 text-white border border-gray-700 min-w-[200px] mb-2 right-0">
+      <DropdownMenuContent className="bg-dark-1 text-white border border-dark-1 min-w-[200px] mb-2 right-0">
         <DropdownMenuItem 
           onClick={leaveCall}
           className="cursor-pointer py-3 hover:bg-dark-2 text-gray-200 focus:bg-dark-2 focus:text-white"

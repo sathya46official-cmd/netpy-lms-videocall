@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useUser } from '@/hooks/useUser';
+
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { MessageSquare, Clock, User as UserIcon } from 'lucide-react';
@@ -30,12 +30,13 @@ export default function RecordingComments({
   const [comments, setComments] = useState<Comment[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const { user } = useUser();
+
   const { toast } = useToast();
 
   useEffect(() => {
     fetchComments();
     // In a real app we'd configure a Supabase Realtime channel here for live comments
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recordingId]);
 
   const fetchComments = async () => {
@@ -74,7 +75,7 @@ export default function RecordingComments({
   // Parses text to find `@mentor` and `MM:SS` timestamps
   const renderCommentContent = (text: string) => {
     // Basic regex: matches @mentor
-    const highlightRegex = /(@[A-Za-z0-9_]+)/g;
+
     // Regex for basic MM:SS or HH:MM:SS
     const timeRegex = /(?:([0-5]?[0-9]):)?([0-5]?[0-9]):([0-5][0-9])/g;
     const timeRegexSimple = /([0-5]?[0-9]):([0-5][0-9])/g;

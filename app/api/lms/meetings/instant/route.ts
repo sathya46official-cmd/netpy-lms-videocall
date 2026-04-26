@@ -61,7 +61,18 @@ export async function POST(request: Request) {
         title: title.trim(),
         description: description ? description.trim() : '',
       },
-      settings_override: { recording: { mode: 'available', quality: '720p' } },
+      settings_override: {
+        recording: {
+          mode: 'available',
+          quality: '1080p',
+          layout: {
+            name: 'grid',
+            options: {
+              'custom_css.url': `${process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://lms.yourdomain.com'}/recording-theme.css`
+            }
+          }
+        }
+      },
     },
   });
 

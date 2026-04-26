@@ -1,0 +1,17 @@
+/* Stream Video Custom Recording Theme */
+:root {
+  --str-video__background-color: #161925; /* Your dark-1 color */
+  --str-video__surface-color: #1c1f2e; /* Your dark-2 color */
+  --str-video__text-color: #ffffff;
+  --str-video__primary-color: #0E78F9; /* Your blue-1 color */
+}
+
+body {
+  background-color: var(--str-video__background-color) !important;
+  color: var(--str-video__text-color) !important;
+}
+
+.str-video__participant-view {
+  background-color: var(--str-video__surface-color) !important;
+  border-radius: 12px;
+}
