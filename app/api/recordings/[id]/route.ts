@@ -6,7 +6,7 @@ const ALLOWED_DELETE_ROLES = ['staff', 'org_admin', 'super_admin'];
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = createClient();
@@ -32,7 +32,7 @@ export async function DELETE(
     }
 
     const adminDb = createAdminClient();
-    const { id } = params;
+    const { id } = await props.params;
 
     // Fetch the recording to check org ownership
     const { data: recording, error: fetchErr } = await adminDb

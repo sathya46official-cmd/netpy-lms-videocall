@@ -4,7 +4,7 @@ import { validateApiKey, badRequestResponse, notFoundResponse, forbiddenResponse
 import { sendMeetingCancelledEmail } from '@/lib/email';
 import { logApiCall, notifyUsers } from '@/lib/lms-api';
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
   const auth = validateApiKey(request);
   if (!auth.valid) return auth.response;
 
@@ -27,7 +27,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   const { data: meeting, error } = await adminDb
     .from('meetings')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', (await props.params).id)
     .single();
 
   if (error || !meeting) {
@@ -49,7 +49,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       status: 'cancelled',
       cancelled_reason: reason.trim() 
     })
-    .eq('id', params.id);
+    .eq('id', (await props.params).id);
 
   if (updateError) {
     console.error(updateError);
@@ -63,7 +63,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const { data: invites } = await adminDb
       .from('meeting_invites')
       .select('user_id, users(email)')
-      .eq('meeting_id', params.id);
+      .eq('meeting_id', (await props.params).id);
 
     if (invites && invites.length > 0) {
       notified_count = invites.length;
@@ -90,7 +90,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
   }
 
-  await logApiCall('lms_cancel_meeting', org_id, `/api/lms/meetings/${params.id}/cancel`, {
+  await logApiCall('lms_cancel_meeting', org_id, `/api/lms/meetings/${(await props.params).id}/cancel`, {
     reason,
     notified_count
   });

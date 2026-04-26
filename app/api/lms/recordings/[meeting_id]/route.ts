@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { validateApiKey, badRequestResponse, notFoundResponse, forbiddenResponse } from '@/lib/api-auth';
 import { buildEmbedResponse, logApiCall } from '@/lib/lms-api';
 
-export async function GET(request: Request, { params }: { params: { meeting_id: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ meeting_id: string }> }) {
   const auth = validateApiKey(request);
   if (!auth.valid) return auth.response;
 
@@ -19,7 +19,7 @@ export async function GET(request: Request, { params }: { params: { meeting_id: 
   const { data: meeting, error } = await adminDb
     .from('meetings')
     .select('*, users!meetings_host_id_fkey(full_name, email), subjects(name)')
-    .eq('id', params.meeting_id)
+    .eq('id', (await props.params).meeting_id)
     .single();
 
   if (error || !meeting) {
@@ -37,7 +37,7 @@ export async function GET(request: Request, { params }: { params: { meeting_id: 
   const embedRes = buildEmbedResponse(meeting.id);
   const hostInfo = meeting.users || meeting.host;
 
-  await logApiCall('lms_get_recording_details', org_id, `/api/lms/recordings/${params.meeting_id}`);
+  await logApiCall('lms_get_recording_details', org_id, `/api/lms/recordings/${(await props.params).meeting_id}`);
 
   return NextResponse.json({
     success: true,

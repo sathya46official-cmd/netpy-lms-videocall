@@ -72,7 +72,7 @@ const MeetingRoom = () => {
         }
         const tiles = document.querySelectorAll('.str-video__participant-view');
         tiles.forEach(tile => {
-          if (tile.innerHTML.includes(reactedUser?.id) || tile.innerHTML.includes(name)) {
+          if (tile.textContent?.includes(reactedUser?.id) || tile.textContent?.includes(name)) {
             tile.classList.add('golden-border');
           }
         });
@@ -84,7 +84,7 @@ const MeetingRoom = () => {
         }
         const tiles = document.querySelectorAll('.str-video__participant-view');
         tiles.forEach(tile => {
-          if (tile.innerHTML.includes(reactedUser?.id) || tile.innerHTML.includes(name)) {
+          if (tile.textContent?.includes(reactedUser?.id) || tile.textContent?.includes(name)) {
             tile.classList.remove('golden-border');
           }
         });
@@ -108,6 +108,7 @@ const MeetingRoom = () => {
       }
     } catch(err) {
       console.error(err);
+      toast({ title: 'Failed to update hand state', variant: 'destructive' });
     }
   };
 

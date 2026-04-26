@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
   try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -11,7 +11,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const { data: comments, error } = await supabase
       .from('recording_comments')
       .select('*, users(full_name, email, role, avatar_url)')
-      .eq('recording_id', params.id)
+      .eq('recording_id', (await props.params).id)
       .order('created_at', { ascending: true });
 
     if (error) throw error;
@@ -23,7 +23,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
   try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -40,7 +40,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const { data, error } = await supabase
       .from('recording_comments')
       .insert({
-        recording_id: params.id,
+        recording_id: (await props.params).id,
         user_id: user.id,
         content,
         parent_id: parent_id || null

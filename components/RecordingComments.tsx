@@ -30,6 +30,7 @@ export default function RecordingComments({
   const [comments, setComments] = useState<Comment[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { toast } = useToast();
 
@@ -52,7 +53,8 @@ export default function RecordingComments({
   };
 
   const postComment = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || isSubmitting) return;
+    setIsSubmitting(true);
     
     try {
       const res = await fetch(`/api/recordings/${recordingId}/comments`, {
@@ -62,13 +64,15 @@ export default function RecordingComments({
       });
       
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error || 'Failed to post comment');
       
       setComments(prev => [...prev, data.comment]);
       setInput('');
       toast({ title: 'Comment posted' });
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Unknown error occurred', variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -77,8 +81,8 @@ export default function RecordingComments({
     // Basic regex: matches @mentor
 
     // Regex for basic MM:SS or HH:MM:SS
-    const timeRegex = /(?:([0-5]?[0-9]):)?([0-5]?[0-9]):([0-5][0-9])/g;
-    const timeRegexSimple = /([0-5]?[0-9]):([0-5][0-9])/g;
+    const timeRegex = /(?:([0-5]?[0-9]):)?([0-5]?[0-9]):([0-5][0-9])/;
+    const timeRegexSimple = /([0-5]?[0-9]):([0-5][0-9])/;
 
     const tokens = text.split(/(\s+)/);
     
@@ -174,8 +178,8 @@ export default function RecordingComments({
             placeholder="E.g. @mentor I didn't understand the concept at 25:30"
             className="flex-1 text-sm bg-white border-gray-200"
           />
-          <Button onClick={postComment} disabled={!input.trim()} className="bg-sky-600 hover:bg-sky-700 text-white shadow-sm">
-            Post
+          <Button onClick={postComment} disabled={!input.trim() || isSubmitting} className="bg-sky-600 hover:bg-sky-700 text-white shadow-sm">
+            {isSubmitting ? 'Posting...' : 'Post'}
           </Button>
         </div>
       </div>
