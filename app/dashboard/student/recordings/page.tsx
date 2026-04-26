@@ -33,6 +33,7 @@ export default function StudentRecordingsPage() {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [playingTitle, setPlayingTitle] = useState('');
   const videoRef = useRef<HTMLVideoElement>(null);
+  const lastSyncedTime = useRef<number>(-1);
   const { toast } = useToast();
 
   const fetchRecordings = useCallback(async () => {
@@ -65,6 +66,7 @@ export default function StudentRecordingsPage() {
     if (!playingUrl && videoRef.current) {
       videoRef.current.pause();
       videoRef.current.src = '';
+      lastSyncedTime.current = -1;
     }
   }, [playingUrl]);
 
@@ -120,8 +122,10 @@ export default function StudentRecordingsPage() {
                   onTimeUpdate={() => {
                     if (!videoRef.current || !loadingId) return;
                     const currentTime = videoRef.current.currentTime;
+                    const currentFloor = Math.floor(currentTime);
                     // Send progress every 10 seconds
-                    if (Math.floor(currentTime) % 10 === 0 && Math.floor(currentTime) > 0) {
+                    if (currentFloor % 10 === 0 && currentFloor > 0 && currentFloor !== lastSyncedTime.current) {
+                      lastSyncedTime.current = currentFloor;
                       fetch(`/api/recordings/${loadingId}/progress`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },

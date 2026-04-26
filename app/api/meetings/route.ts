@@ -43,11 +43,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('users')
       .select('role, org_id, full_name')
       .eq('id', user.id)
       .single();
+
+    if (profileError) {
+      console.error('Failed to fetch user profile:', profileError);
+      return NextResponse.json({ error: 'Failed to authorize user' }, { status: 500 });
+    }
 
     if (!profile || !['super_admin', 'org_admin', 'staff'].includes(profile.role)) {
       return NextResponse.json({ error: 'Only staff or above can create meetings' }, { status: 403 });
@@ -90,6 +95,14 @@ export async function POST(request: Request) {
       }
     }
 
+    const host = request.headers.get('host');
+    const protocol = host?.includes('localhost') ? 'http' : 'https';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || (host ? `${protocol}://${host}` : null);
+    
+    if (!baseUrl) {
+      return NextResponse.json({ error: 'Server configuration error: missing BASE_URL' }, { status: 500 });
+    }
+
     const streamClient = new StreamClient(
       process.env.NEXT_PUBLIC_STREAM_API_KEY!,
       process.env.STREAM_API_SECRET!
@@ -112,7 +125,7 @@ export async function POST(request: Request) {
             layout: {
               name: 'grid',
               options: {
-                'custom_css.url': `${process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://lms.yourdomain.com'}/recording-theme.css`
+                'custom_css.url': `${baseUrl}/recording-theme.css`
               }
             }
           }

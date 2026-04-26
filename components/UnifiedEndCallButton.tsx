@@ -22,19 +22,31 @@ const UnifiedEndCallButton = () => {
   const isMeetingOwner = isStaffOrAbove;
 
   const leaveCall = async () => {
-    await call.leave();
-    router.push('/');
+    try {
+      await call.leave();
+      router.push('/');
+    } catch (e) {
+      console.error('Failed to leave call', e);
+    }
   };
 
   const endCallForEveryone = async () => {
     try {
       // Proactively mark as ended in our DB so UI updates instantly
-      await fetch(`/api/meetings/${call.id}/end`, { method: 'POST' });
+      const res = await fetch(`/api/meetings/${call.id}/end`, { method: 'POST' });
+      if (!res.ok) {
+        console.error('Failed to end meeting in DB: Server returned', res.status);
+      }
     } catch (e) {
       console.error('Failed to end meeting in DB', e);
     }
-    await call.endCall();
-    router.push('/');
+
+    try {
+      await call.endCall();
+      router.push('/');
+    } catch (e) {
+      console.error('Failed to end call for everyone', e);
+    }
   };
 
   // For students/non-owners, just show a simple Leave button

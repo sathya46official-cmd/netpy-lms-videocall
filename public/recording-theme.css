@@ -13,5 +13,5 @@ body {
 
 .str-video__participant-view {
   background-color: var(--str-video__surface-color) !important;
-  border-radius: 12px;
+  border-radius: 12px !important;
 }
