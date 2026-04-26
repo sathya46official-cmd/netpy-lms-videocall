@@ -16,7 +16,15 @@ export async function POST(request: Request) {
     const description = body.description || "Scheduled Meeting";
     
     const meetingId = crypto.randomUUID();
-    const joinUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/meeting/${meetingId}`;
+    const host = request.headers.get('host');
+    const protocol = host?.includes('localhost') ? 'http' : 'https';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || (host ? `${protocol}://${host}` : null);
+    
+    if (!baseUrl) {
+      return NextResponse.json({ error: 'Server configuration error: missing BASE_URL' }, { status: 500 });
+    }
+
+    const joinUrl = `${baseUrl}/meeting/${meetingId}`;
 
     // Create actual meeting inside GetStream Backend
     const STREAM_API_KEY = process.env.NEXT_PUBLIC_STREAM_API_KEY;
@@ -40,7 +48,19 @@ export async function POST(request: Request) {
         data: {
           starts_at: startsAt,
           created_by_id: user.id,
-          custom: { description }
+          custom: { description },
+          settings_override: {
+            recording: {
+              mode: 'available',
+              quality: '1080p',
+              layout: {
+                name: 'grid',
+                options: {
+                  'custom_css.url': `${baseUrl}/recording-theme.css`
+                }
+              }
+            }
+          }
         }
       });
     }

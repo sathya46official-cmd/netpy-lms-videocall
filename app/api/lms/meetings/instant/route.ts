@@ -54,6 +54,14 @@ export async function POST(request: Request) {
   const callId = `call_${crypto.randomUUID()}`;
   const streamCall = streamClient.video.call('default', callId);
 
+  const hostHeader = request.headers.get('host');
+  const protocol = hostHeader?.includes('localhost') ? 'http' : 'https';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || (hostHeader ? `${protocol}://${hostHeader}` : null);
+  
+  if (!baseUrl) {
+    return NextResponse.json({ error: 'Server configuration error: missing BASE_URL' }, { status: 500 });
+  }
+
   await streamCall.getOrCreate({
     data: {
       created_by_id: host.id,
@@ -61,7 +69,18 @@ export async function POST(request: Request) {
         title: title.trim(),
         description: description ? description.trim() : '',
       },
-      settings_override: { recording: { mode: 'available', quality: '720p' } },
+      settings_override: {
+        recording: {
+          mode: 'available',
+          quality: '1080p',
+          layout: {
+            name: 'grid',
+            options: {
+              'custom_css.url': `${baseUrl}/recording-theme.css`
+            }
+          }
+        }
+      },
     },
   });
 

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
   try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -15,7 +15,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       .from('recording_progress')
       .upsert(
         { 
-          recording_id: params.id, 
+          recording_id: (await props.params).id, 
           user_id: user.id, 
           watched_seconds: watchedSeconds,
           last_position_seconds: lastPositionSeconds,

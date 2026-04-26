@@ -1,6 +1,6 @@
 'use client';
 
-import { useCall, useCallStateHooks } from '@stream-io/video-react-sdk';
+import { useCall } from '@stream-io/video-react-sdk';
 import { useRouter } from 'next/navigation';
 import { useRole } from '@/hooks/useRole';
 import {
@@ -22,19 +22,31 @@ const UnifiedEndCallButton = () => {
   const isMeetingOwner = isStaffOrAbove;
 
   const leaveCall = async () => {
-    await call.leave();
-    router.push('/');
+    try {
+      await call.leave();
+      router.push('/');
+    } catch (e) {
+      console.error('Failed to leave call', e);
+    }
   };
 
   const endCallForEveryone = async () => {
     try {
       // Proactively mark as ended in our DB so UI updates instantly
-      await fetch(`/api/meetings/${call.id}/end`, { method: 'POST' });
+      const res = await fetch(`/api/meetings/${call.id}/end`, { method: 'POST' });
+      if (!res.ok) {
+        console.error('Failed to end meeting in DB: Server returned', res.status);
+      }
     } catch (e) {
       console.error('Failed to end meeting in DB', e);
     }
-    await call.endCall();
-    router.push('/');
+
+    try {
+      await call.endCall();
+      router.push('/');
+    } catch (e) {
+      console.error('Failed to end call for everyone', e);
+    }
   };
 
   // For students/non-owners, just show a simple Leave button
@@ -59,7 +71,7 @@ const UnifiedEndCallButton = () => {
           End
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="border-dark-1 bg-dark-1 text-white border border-gray-700 min-w-[200px] mb-2 right-0">
+      <DropdownMenuContent className="bg-dark-1 text-white border border-dark-1 min-w-[200px] mb-2 right-0">
         <DropdownMenuItem 
           onClick={leaveCall}
           className="cursor-pointer py-3 hover:bg-dark-2 text-gray-200 focus:bg-dark-2 focus:text-white"

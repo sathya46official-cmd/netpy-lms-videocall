@@ -51,9 +51,9 @@ export async function POST(request: Request) {
 
     const adminDb = createAdminClient();
 
-    // Ensure call_cid exists
-    if (!body.call_cid) {
-      console.error('[Stream Webhook] Missing call_cid');
+    // Ensure call_cid exists and has correct format
+    if (!body.call_cid || typeof body.call_cid !== 'string' || !body.call_cid.includes(':')) {
+      console.error('[Stream Webhook] Missing or invalid call_cid');
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
     }
     
@@ -96,11 +96,15 @@ export async function POST(request: Request) {
         }
 
         if (body.type === 'call.session_participant_joined') {
-            await adminDb.from('meeting_attendance').insert({
+            const { error: insertError } = await adminDb.from('meeting_attendance').insert({
                 meeting_id: meeting.id,
                 user_id: userId,
             });
-            console.log('[Stream Webhook] Participant Joined:', userId);
+            if (insertError) {
+                console.error('[Stream Webhook] Failed to insert attendance:', insertError);
+            } else {
+                console.log('[Stream Webhook] Participant Joined:', userId);
+            }
         }
 
         if (body.type === 'call.session_participant_left') {
@@ -117,17 +121,22 @@ export async function POST(request: Request) {
 
             if (openRecord) {
                 const joinedAt = new Date(openRecord.joined_at).getTime();
-                const leftAt = new Date().getTime();
+                const now = new Date();
+                const leftAt = now.getTime();
                 const durationSeconds = Math.round((leftAt - joinedAt) / 1000);
 
-                await adminDb.from('meeting_attendance')
+                const { error: updateError } = await adminDb.from('meeting_attendance')
                   .update({
-                      left_at: new Date().toISOString(),
+                      left_at: now.toISOString(),
                       duration_seconds: durationSeconds
                   })
                   .eq('id', openRecord.id);
                   
-                console.log('[Stream Webhook] Participant Left:', userId, 'Duration:', durationSeconds);
+                if (updateError) {
+                    console.error('[Stream Webhook] Failed to update attendance:', updateError);
+                } else {
+                    console.log('[Stream Webhook] Participant Left:', userId, 'Duration:', durationSeconds);
+                }
             }
         }
 

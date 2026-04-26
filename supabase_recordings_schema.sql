@@ -13,12 +13,12 @@ CREATE TABLE IF NOT EXISTS batch_members (
 
 ALTER TABLE meeting_invites ADD COLUMN IF NOT EXISTS batch_id uuid REFERENCES public.batches(id) ON DELETE CASCADE;
 
-DROP TABLE IF EXISTS recordings CASCADE;
+-- Removed DROP TABLE to prevent destroying production data
 
 CREATE TABLE IF NOT EXISTS recordings (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  meeting_id          UUID REFERENCES meetings(id) ON DELETE CASCADE,
-  org_id              UUID REFERENCES organisations(id) ON DELETE CASCADE,
+  meeting_id          UUID NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
+  org_id              UUID NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
   host_id             UUID REFERENCES users(id) ON DELETE SET NULL,
   stream_recording_id TEXT,
   file_key            TEXT NOT NULL,        -- MinIO object key e.g. "org-id/meeting-id/rec.mp4"

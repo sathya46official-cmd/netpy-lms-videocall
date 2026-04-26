@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { validateApiKey, badRequestResponse, notFoundResponse, forbiddenResponse } from '@/lib/api-auth';
 import { buildMeetingResponse, logApiCall } from '@/lib/lms-api';
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
   const auth = validateApiKey(request);
   if (!auth.valid) return auth.response;
 
@@ -19,7 +19,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
   const { data: meeting, error } = await adminDb
     .from('meetings')
     .select('*, users!meetings_host_id_fkey(full_name, email), subjects(name)')
-    .eq('id', params.id)
+    .eq('id', (await props.params).id)
     .single();
 
   if (error || !meeting) {
@@ -32,7 +32,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
   const responseMeeting = buildMeetingResponse(meeting, true);
 
-  await logApiCall('lms_get_meeting_details', org_id, `/api/lms/meetings/${params.id}`);
+  await logApiCall('lms_get_meeting_details', org_id, `/api/lms/meetings/${(await props.params).id}`);
 
   return NextResponse.json({
     success: true,

@@ -1,4 +1,3 @@
-import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { Role } from './permissions';
 import crypto from 'crypto';

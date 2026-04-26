@@ -1,3 +1,4 @@
+/* eslint-disable camelcase */
 import { createAdminClient } from './supabase/admin';
 
 export async function resolveUsersByEmail(emails: string[], org_id: string) {
@@ -74,7 +75,7 @@ export function buildMeetingResponse(meeting: any, includeRecording: boolean = f
   const res: any = {
     id: meeting.id,
     stream_call_id: meeting.stream_call_id,
-    join_url: meeting.stream_call_id ? \`\${baseUrl}/meeting/\${meeting.stream_call_id}\` : null,
+    join_url: meeting.stream_call_id ? `${baseUrl}/meeting/${meeting.stream_call_id}` : null,
     title: meeting.title,
     subject: meeting.subjects?.name || null,
     module: meeting.module,
@@ -109,8 +110,9 @@ export function buildMeetingResponse(meeting: any, includeRecording: boolean = f
 
 export function buildEmbedResponse(meeting_id: string) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  const embed_url = \`\${baseUrl}/embed/recording/\${meeting_id}\`;
-  const embed_code = \`<iframe src='\${embed_url}' width='100%' height='480' frameborder='0' allowfullscreen allow='fullscreen'></iframe>\`;
+  const safeMeetingId = encodeURIComponent(meeting_id).replace(/'/g, "%27");
+  const embed_url = `${baseUrl}/embed/recording/${safeMeetingId}`;
+  const embed_code = `<iframe src='${embed_url}' width='100%' height='480' frameborder='0' allowfullscreen allow='fullscreen'></iframe>`;
 
   return { embed_url, embed_code };
 }
